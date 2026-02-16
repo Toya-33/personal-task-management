@@ -1,12 +1,12 @@
 import { AppShell } from "@/components/app-shell";
 import { TimerProvider } from "@/components/timer/timer-provider";
-import { FloatingTimer } from "@/components/timer/floating-timer";
+import { PipTimer } from "@/components/timer/pip-timer";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <TimerProvider>
       <AppShell>{children}</AppShell>
-      <FloatingTimer />
+      <PipTimer />
     </TimerProvider>
   );
 }
