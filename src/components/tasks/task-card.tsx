@@ -28,6 +28,7 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
+  Pencil,
 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
@@ -46,6 +47,8 @@ export function TaskCard({
   const [open, setOpen] = useState(true);
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
 
   const filteredSubtasks =
     viewFilter === "pending"
@@ -66,6 +69,16 @@ export function TaskCard({
     await updateTask(task.id, { status: "completed" });
   }
 
+  async function handleRenameTask() {
+    const trimmed = editTitle.trim();
+    if (!trimmed || trimmed === task.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+    await updateTask(task.id, { title: trimmed });
+    setIsEditingTitle(false);
+  }
+
   return (
     <Card>
       <Collapsible open={open} onOpenChange={setOpen}>
@@ -83,11 +96,26 @@ export function TaskCard({
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span
-                  className={`font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}
-                >
-                  {task.title}
-                </span>
+                {isEditingTitle ? (
+                  <Input
+                    className="h-7 text-sm font-medium"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={handleRenameTask}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") setIsEditingTitle(false);
+                    }}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <span
+                    className={`font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}
+                  >
+                    {task.title}
+                  </span>
+                )}
                 <Badge
                   variant="secondary"
                   className={`text-xs ${statusColors[task.status]}`}
@@ -96,21 +124,22 @@ export function TaskCard({
                 </Badge>
               </div>
               {task.description && (
-                <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                <p className="text-sm text-muted-foreground mt-0.5 truncate text-wrap">
                   {task.description}
                 </p>
               )}
             </div>
 
             {task.total_seconds > 0 && (
-              <span className="text-sm font-mono text-muted-foreground">
+              <p className="text-sm font-mono text-muted-foreground">
                 {formatDuration(task.total_seconds)}
-              </span>
+              </p>
             )}
 
-            <span className="text-xs text-muted-foreground">
-              {filteredSubtasks.length} subtask{filteredSubtasks.length !== 1 ? "s" : ""}
-            </span>
+            <p className="text-xs text-muted-foreground">
+              {filteredSubtasks.length} subtask
+              {filteredSubtasks.length !== 1 ? "s" : ""}
+            </p>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -125,6 +154,16 @@ export function TaskCard({
                     Mark complete
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditTitle(task.title);
+                    setIsEditingTitle(true);
+                  }}
+                >
+                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  Rename
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
                   onClick={() => deleteTask(task.id)}
