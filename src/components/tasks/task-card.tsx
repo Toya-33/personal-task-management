@@ -36,10 +36,21 @@ const statusColors: Record<string, string> = {
   completed: "bg-green-500/10 text-green-600 dark:text-green-400",
 };
 
-export function TaskCard({ task }: { task: TaskWithSubtasks }) {
+export function TaskCard({
+  task,
+  viewFilter = "pending",
+}: {
+  task: TaskWithSubtasks;
+  viewFilter?: "pending" | "completed";
+}) {
   const [open, setOpen] = useState(true);
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+
+  const filteredSubtasks =
+    viewFilter === "pending"
+      ? task.subtasks.filter((s) => s.status !== "completed")
+      : task.subtasks.filter((s) => s.status === "completed");
 
   async function handleAddSubtask() {
     if (!newSubtaskTitle.trim()) return;
@@ -98,7 +109,7 @@ export function TaskCard({ task }: { task: TaskWithSubtasks }) {
             )}
 
             <span className="text-xs text-muted-foreground">
-              {task.subtasks.length} subtask{task.subtasks.length !== 1 ? "s" : ""}
+              {filteredSubtasks.length} subtask{filteredSubtasks.length !== 1 ? "s" : ""}
             </span>
 
             <DropdownMenu>
@@ -129,7 +140,7 @@ export function TaskCard({ task }: { task: TaskWithSubtasks }) {
         <CollapsibleContent>
           <CardContent className="px-4 pb-4 pt-0">
             <div className="ml-6 space-y-1">
-              {task.subtasks.map((subtask) => (
+              {filteredSubtasks.map((subtask) => (
                 <SubtaskItem
                   key={subtask.id}
                   subtask={subtask}

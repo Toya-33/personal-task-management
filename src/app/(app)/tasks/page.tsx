@@ -13,12 +13,12 @@ export default async function TasksPage() {
   const { data: tasks } = await supabase
     .from("tasks")
     .select("*")
-    .order("sort_order");
+    .order("updated_at", { ascending: false });
 
   const { data: subtasks } = await supabase
     .from("subtasks")
     .select("*")
-    .order("sort_order");
+    .order("updated_at", { ascending: false });
 
   const { data: timeEntries } = await supabase
     .from("time_entries")

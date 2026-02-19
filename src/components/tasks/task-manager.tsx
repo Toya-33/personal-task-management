@@ -13,8 +13,32 @@ export function TaskManager({ folders }: { folders: FolderWithTasks[] }) {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(
     folders[0]?.id ?? null
   );
+  const [viewFilter, setViewFilter] = useState<"pending" | "completed">("pending");
 
   const selectedFolder = folders.find((f) => f.id === selectedFolderId);
+
+  // Compute filtered tasks based on view filter
+  const filteredTasks = selectedFolder
+    ? viewFilter === "pending"
+      ? selectedFolder.tasks.filter((t) => t.status !== "completed")
+      : selectedFolder.tasks.filter(
+          (t) =>
+            t.status === "completed" ||
+            t.subtasks.some((s) => s.status === "completed")
+        )
+    : [];
+
+  // Compute counts for tabs
+  const pendingCount = selectedFolder
+    ? selectedFolder.tasks.filter((t) => t.status !== "completed").length
+    : 0;
+  const completedCount = selectedFolder
+    ? selectedFolder.tasks.filter(
+        (t) =>
+          t.status === "completed" ||
+          t.subtasks.some((s) => s.status === "completed")
+      ).length
+    : 0;
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -56,17 +80,44 @@ export function TaskManager({ folders }: { folders: FolderWithTasks[] }) {
                 </Button>
               </CreateTaskDialog>
             </div>
-            {selectedFolder.tasks.length === 0 ? (
+
+            {/* Tab toggle */}
+            <div className="mb-4 flex gap-1 rounded-lg bg-muted p-1">
+              <button
+                onClick={() => setViewFilter("pending")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  viewFilter === "pending"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Pending ({pendingCount})
+              </button>
+              <button
+                onClick={() => setViewFilter("completed")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  viewFilter === "completed"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Completed ({completedCount})
+              </button>
+            </div>
+
+            {filteredTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
                 <FolderOpen className="mb-2 h-10 w-10 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  No tasks yet. Create one to get started.
+                  {viewFilter === "pending"
+                    ? "No pending tasks. Create one to get started."
+                    : "No completed tasks yet."}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedFolder.tasks.map((task) => (
-                  <TaskCard key={task.id} task={task} />
+                {filteredTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} viewFilter={viewFilter} />
                 ))}
               </div>
             )}

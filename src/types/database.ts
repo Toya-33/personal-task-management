@@ -16,6 +16,7 @@ export interface Task {
   status: "pending" | "in_progress" | "completed";
   sort_order: number;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Subtask {
@@ -26,6 +27,7 @@ export interface Subtask {
   status: "pending" | "in_progress" | "completed";
   sort_order: number;
   created_at: string;
+  updated_at: string;
 }
 
 export interface TimeEntry {

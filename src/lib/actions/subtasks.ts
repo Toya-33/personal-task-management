@@ -34,7 +34,7 @@ export async function updateSubtask(
   data: { title?: string; status?: string }
 ) {
   const supabase = await createClient();
-  await supabase.from("subtasks").update(data).eq("id", subtaskId);
+  await supabase.from("subtasks").update({ ...data, updated_at: new Date().toISOString() }).eq("id", subtaskId);
   revalidatePath("/tasks");
 }
 

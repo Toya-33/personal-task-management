@@ -27,7 +27,8 @@ create table tasks (
   description text,
   status text not null default 'pending' check (status in ('pending', 'in_progress', 'completed')),
   sort_order integer not null default 0,
-  created_at timestamptz default now() not null
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
 );
 
 alter table tasks enable row level security;
@@ -42,7 +43,8 @@ create table subtasks (
   title text not null,
   status text not null default 'pending' check (status in ('pending', 'in_progress', 'completed')),
   sort_order integer not null default 0,
-  created_at timestamptz default now() not null
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
 );
 
 alter table subtasks enable row level security;
@@ -63,6 +65,25 @@ create table time_entries (
 alter table time_entries enable row level security;
 create policy "Users can manage their own time entries" on time_entries
   for all using (auth.uid() = user_id);
+
+-- Auto-update updated_at trigger function
+create or replace function update_updated_at_column()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger tasks_updated_at
+  before update on tasks
+  for each row
+  execute function update_updated_at_column();
+
+create trigger subtasks_updated_at
+  before update on subtasks
+  for each row
+  execute function update_updated_at_column();
 
 -- Indexes for performance
 create index idx_folders_user_id on folders(user_id);

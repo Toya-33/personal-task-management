@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { Task, Folder } from "@/types/database";
 import { StatsCards } from "./stats-cards";
 import { TimeByTaskChart } from "./time-by-task-chart";
 import { DailyTimeChart } from "./daily-time-chart";
 import { CompletedTasksChart } from "./completed-tasks-chart";
 import { PeriodSelector, type Period } from "./period-selector";
+import { DateRangePicker } from "./date-range-picker";
+import { TimeEntriesTable } from "./time-entries-table";
 
-interface TimeEntryWithRelations {
+export interface TimeEntryWithRelations {
   id: string;
   started_at: string;
   ended_at: string | null;
@@ -34,26 +36,26 @@ interface DashboardContentProps {
   folders: Folder[];
 }
 
-function getDateRange(period: Period): { start: Date; end: Date } {
+function getDateRangeForPeriod(period: Period): { from: Date; to: Date } {
   const now = new Date();
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  let start: Date;
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  let from: Date;
 
   switch (period) {
     case "day":
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       break;
     case "week":
-      start = new Date(now);
-      start.setDate(now.getDate() - 6);
-      start.setHours(0, 0, 0, 0);
+      from = new Date(now);
+      from.setDate(now.getDate() - 6);
+      from.setHours(0, 0, 0, 0);
       break;
     case "month":
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      from = new Date(now.getFullYear(), now.getMonth(), 1);
       break;
   }
 
-  return { start, end };
+  return { from, to };
 }
 
 export function DashboardContent({
@@ -62,15 +64,24 @@ export function DashboardContent({
   folders,
 }: DashboardContentProps) {
   const [period, setPeriod] = useState<Period>("week");
-  const { start, end } = getDateRange(period);
+  const [dateRange, setDateRange] = useState(() => getDateRangeForPeriod("week"));
+
+  const handlePeriodChange = useCallback((newPeriod: Period) => {
+    setPeriod(newPeriod);
+    setDateRange(getDateRangeForPeriod(newPeriod));
+  }, []);
+
+  const handleDateRangeChange = useCallback((range: { from: Date; to: Date }) => {
+    setDateRange(range);
+  }, []);
 
   const filteredEntries = useMemo(
     () =>
       timeEntries.filter((e) => {
         const entryDate = new Date(e.started_at);
-        return entryDate >= start && entryDate <= end;
+        return entryDate >= dateRange.from && entryDate <= dateRange.to;
       }),
-    [timeEntries, start, end]
+    [timeEntries, dateRange.from, dateRange.to]
   );
 
   const totalSeconds = filteredEntries.reduce(
@@ -103,8 +114,8 @@ export function DashboardContent({
   // Daily time series
   const dailyTime = useMemo(() => {
     const map = new Map<string, number>();
-    const current = new Date(start);
-    while (current <= end) {
+    const current = new Date(dateRange.from);
+    while (current <= dateRange.to) {
       const key = current.toISOString().split("T")[0];
       map.set(key, 0);
       current.setDate(current.getDate() + 1);
@@ -117,11 +128,17 @@ export function DashboardContent({
       date,
       hours: Math.round((seconds / 3600) * 100) / 100,
     }));
-  }, [filteredEntries, start, end]);
+  }, [filteredEntries, dateRange.from, dateRange.to]);
 
   return (
     <div className="space-y-6">
-      <PeriodSelector period={period} onChange={setPeriod} />
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodSelector period={period} onChange={handlePeriodChange} />
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={handleDateRangeChange}
+        />
+      </div>
 
       <StatsCards
         totalSeconds={totalSeconds}
@@ -139,6 +156,8 @@ export function DashboardContent({
         completed={completedTasks}
         pending={pendingTasks}
       />
+
+      <TimeEntriesTable entries={filteredEntries} />
     </div>
   );
 }
