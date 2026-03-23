@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition, useOptimistic, useState, useEffect } from "react";
 import type { TaskWithSubtasks } from "@/types/database";
 import { SubtaskItem } from "./subtask-item";
 import { formatDuration } from "@/lib/utils/time";
@@ -30,6 +30,7 @@ import {
   CheckCircle2,
   Pencil,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
@@ -44,25 +45,65 @@ export function TaskCard({
   task: TaskWithSubtasks;
   viewFilter?: "pending" | "completed";
 }) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  // Local state for instant UI
+  const [isDeleted, setIsDeleted] = useState(false);
+  const [displayTitle, setDisplayTitle] = useState(task.title);
+  const [taskStatus, setTaskStatus] = useState(task.status);
   const [open, setOpen] = useState(true);
-  const [addingSubtask, setAddingSubtask] = useState(false);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [optimisticSubtasks, addOptimisticSubtasks] = useOptimistic(
+    task.subtasks,
+    (state, newSubtask: any) => [...state, newSubtask],
+  );
+
+  // For renaming
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
 
-  const filteredSubtasks =
-    viewFilter === "pending"
-      ? task.subtasks.filter((s) => s.status !== "completed")
-      : task.subtasks.filter((s) => s.status === "completed");
+  // For adding subtask
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+
+  // Handle hydration error
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (isDeleted) return null;
 
   async function handleAddSubtask() {
-    if (!newSubtaskTitle.trim()) return;
-    const fd = new FormData();
-    fd.set("title", newSubtaskTitle.trim());
-    fd.set("task_id", task.id);
-    await createSubtask(fd);
+    const title = newSubtaskTitle.trim();
+    if (!title) return;
+
     setNewSubtaskTitle("");
     setAddingSubtask(false);
+
+    const tempSubtask = {
+      id: crypto.randomUUID(), // Temp ID for React 'key'
+      title: title,
+      status: "pending",
+      total_seconds: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      task_id: task.id,
+      isPlaceholder: true, // We can use this to show a loading style
+    };
+
+    startTransition(async () => {
+      addOptimisticSubtasks(tempSubtask);
+      try {
+        const fd = new FormData();
+        fd.set("title", title);
+        fd.set("task_id", task.id);
+        await createSubtask(fd);
+        router.refresh();
+      } catch (error) {
+        console.error("Error: ", error);
+      }
+    });
   }
 
   async function handleMarkComplete() {
@@ -78,6 +119,12 @@ export function TaskCard({
     await updateTask(task.id, { title: trimmed });
     setIsEditingTitle(false);
   }
+
+  // Use optimistic subtasks for instant UI
+  const filteredSubtasks =
+    viewFilter === "pending"
+      ? optimisticSubtasks.filter((s) => s.status !== "completed")
+      : optimisticSubtasks.filter((s) => s.status === "completed");
 
   return (
     <Card>

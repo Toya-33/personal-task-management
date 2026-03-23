@@ -19,9 +19,12 @@ import {
   Trash2,
   Circle,
   Pencil,
+  Flag,
 } from "lucide-react";
 import { useState } from "react";
 import { Input } from "../ui/input";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 
 interface SubtaskItemProps {
   subtask: SubtaskWithTime;
@@ -32,9 +35,19 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
   const { activeSubtask, isRunning, startTimer, stopTimer, completeTimer } =
     useTimer();
   const isActive = isRunning && activeSubtask?.id === subtask.id;
-  const isCompleted = subtask.status === "completed";
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [displayTitle, setDisplayTitle] = useState(subtask.title);
+
   const [editName, setEditName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(
+    subtask.status === "completed",
+  );
+
+  // Hide the deleted sub-task instantly
+  if (isDeleted) return null;
 
   async function handleToggleTimer() {
     if (isActive) {
@@ -45,40 +58,89 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
   }
 
   async function handleComplete() {
-    if (isActive) {
-      await completeTimer();
-    } else {
-      await updateSubtask(subtask.id, { status: "completed" });
-    }
+    setIsCompleted(true);
+    startTransition(async () => {
+      try {
+        if (isActive) {
+          await completeTimer();
+        } else {
+          await updateSubtask(subtask.id, { status: "completed" });
+        }
+        router.refresh();
+      } catch (error) {
+        setIsCompleted(false);
+        console.error("Failed to update completed tasks: ", error);
+      }
+    });
   }
 
   async function toggleComplete() {
-    if (isCompleted) {
-      await updateSubtask(subtask.id, { status: "in_progress" });
-    } else {
-      if (isActive) {
-        await completeTimer();
-      } else {
-        await updateSubtask(subtask.id, { status: "completed" });
+    const toggleCompleted = !isCompleted;
+    setIsCompleted(toggleCompleted);
+    startTransition(async () => {
+      try {
+        if (!toggleCompleted) {
+          await updateSubtask(subtask.id, { status: "in_progress" });
+        } else {
+          if (isActive) {
+            await completeTimer();
+          } else {
+            await updateSubtask(subtask.id, { status: "completed" });
+          }
+        }
+        router.refresh();
+      } catch (error) {
+        setIsCompleted(!toggleCompleted);
+        console.error("Failed to update: ", error);
       }
-    }
+    });
   }
 
   async function handleRename() {
     const trimmed = editName.trim();
-    if (!trimmed || trimmed === subtask.title) {
+    // No name change or cancel edit
+    if (!trimmed || trimmed === displayTitle) {
       setIsEditing(false);
+      setDisplayTitle(displayTitle);
       return;
     }
-    await updateSubtask(subtask.id, { title: trimmed });
+
+    const oldTitle = displayTitle;
+    setDisplayTitle(trimmed);
     setIsEditing(false);
+
+    // Update database
+    startTransition(async () => {
+      try {
+        await updateSubtask(subtask.id, { title: trimmed });
+        router.refresh();
+      } catch (error) {
+        // Rollback to old name if something went wrong
+        setDisplayTitle(oldTitle);
+        setEditName(oldTitle);
+        alert("Failed to rename task: ");
+        console.error("Error", error);
+      }
+    });
+  }
+
+  async function handleDelete() {
+    setIsDeleted(true);
+    startTransition(async () => {
+      try {
+        await deleteSubtask(subtask.id);
+        router.refresh();
+      } catch (e) {
+        setIsDeleted(false);
+      }
+    });
   }
 
   return (
     <div
       className={`group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50 ${
         isActive ? "bg-primary/5" : ""
-      }`}
+      } ${isPending ? "opacity-50" : ""}`}
     >
       {isEditing ? (
         <Input
@@ -169,7 +231,7 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={() => deleteSubtask(subtask.id)}
+                onClick={handleDelete}
               >
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
                 Delete
