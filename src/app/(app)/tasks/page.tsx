@@ -1,32 +1,29 @@
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { TaskManager } from "@/components/tasks/task-manager";
-import type { FolderWithTasks, TaskWithSubtasks, SubtaskWithTime } from "@/types/database";
+import type {
+  Folder,
+  Task,
+  Subtask,
+  TimeEntry,
+  FolderWithTasks,
+  TaskWithSubtasks,
+  SubtaskWithTime,
+} from "@/types/database";
+
+// Reads live data from Postgres on every request — never prerender at build time.
+export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
-  const supabase = await createClient();
-
-  const { data: folders } = await supabase
-    .from("folders")
-    .select("*")
-    .order("sort_order");
-
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("*")
-    .order("updated_at", { ascending: false });
-
-  const { data: subtasks } = await supabase
-    .from("subtasks")
-    .select("*")
-    .order("updated_at", { ascending: false });
-
-  const { data: timeEntries } = await supabase
-    .from("time_entries")
-    .select("*");
+  const [folders, tasks, subtasks, timeEntries] = await Promise.all([
+    query<Folder>("select * from folders order by sort_order"),
+    query<Task>("select * from tasks order by updated_at desc"),
+    query<Subtask>("select * from subtasks order by updated_at desc"),
+    query<TimeEntry>("select * from time_entries"),
+  ]);
 
   // Aggregate time per subtask
   const subtaskTimeMap = new Map<string, number>();
-  for (const entry of timeEntries ?? []) {
+  for (const entry of timeEntries) {
     const seconds = entry.duration_seconds ?? 0;
     subtaskTimeMap.set(
       entry.subtask_id,
@@ -36,14 +33,14 @@ export default async function TasksPage() {
 
   // Build nested structure
   const subtasksByTask = new Map<string, SubtaskWithTime[]>();
-  for (const st of subtasks ?? []) {
+  for (const st of subtasks) {
     const arr = subtasksByTask.get(st.task_id) ?? [];
     arr.push({ ...st, total_seconds: subtaskTimeMap.get(st.id) ?? 0 });
     subtasksByTask.set(st.task_id, arr);
   }
 
   const tasksByFolder = new Map<string, TaskWithSubtasks[]>();
-  for (const t of tasks ?? []) {
+  for (const t of tasks) {
     const subs = subtasksByTask.get(t.id) ?? [];
     const totalSeconds = subs.reduce((sum, s) => sum + s.total_seconds, 0);
     const arr = tasksByFolder.get(t.folder_id) ?? [];
@@ -51,7 +48,7 @@ export default async function TasksPage() {
     tasksByFolder.set(t.folder_id, arr);
   }
 
-  const foldersWithTasks: FolderWithTasks[] = (folders ?? []).map((f) => {
+  const foldersWithTasks: FolderWithTasks[] = folders.map((f) => {
     const folderTasks = tasksByFolder.get(f.id) ?? [];
     const totalSeconds = folderTasks.reduce((sum, t) => sum + t.total_seconds, 0);
     return { ...f, tasks: folderTasks, total_seconds: totalSeconds };

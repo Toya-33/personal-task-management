@@ -6,9 +6,10 @@ This directory contains records of significant technical decisions made during t
 
 | # | Title | Status |
 |---|-------|--------|
-| [001](001-nextjs-supabase-stack.md) | Next.js 16 + Supabase Stack | Accepted |
+| [001](001-nextjs-supabase-stack.md) | Next.js 16 + Supabase Stack | Superseded by 004 |
 | [002](002-data-model-hierarchy.md) | Folders → Tasks → Subtasks → Time Entries Hierarchy | Accepted |
 | [003](003-pip-timer.md) | Picture-in-Picture Timer Display | Accepted |
+| [004](004-drop-supabase-local-postgres.md) | Drop Supabase for local PostgreSQL, remove auth | Accepted |
 
 ## How to Add a New ADR
 

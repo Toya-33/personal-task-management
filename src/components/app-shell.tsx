@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -11,7 +10,6 @@ import {
   ListTodo,
   BarChart3,
   Menu,
-  LogOut,
   Moon,
   Sun,
 } from "lucide-react";
@@ -52,14 +50,6 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const router = useRouter();
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -84,15 +74,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           Toggle theme
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="justify-start gap-3 text-muted-foreground"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-4 w-4" />
-          Sign out
         </Button>
       </div>
     </div>

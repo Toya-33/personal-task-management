@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   personal-time-tracker:
     container_name: personal-time-tracker
@@ -9,5 +7,15 @@ services:
     restart: always
     ports:
       - 3001:3000
-    volumes:
-      - .env.local:/app/.env.local
+    # DATABASE_URL is read from .env.docker (gitignored) — it's your .env.local with the
+    # host swapped from localhost to host.docker.internal so the container reaches the
+    # PostgreSQL running on your host. The host Postgres must accept connections from the
+    # Docker network (postgresql.conf listen_addresses + pg_hba.conf).
+    env_file:
+      - .env.docker
+    environment:
+      # Make the Next.js standalone server bind to all interfaces inside the container.
+      - HOSTNAME=0.0.0.0
+      - PORT=3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

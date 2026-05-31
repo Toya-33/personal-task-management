@@ -1,7 +1,7 @@
 # ADR-001: Next.js 16 + Supabase Stack
 
 **Date:** 2026-02 (project inception)
-**Status:** Accepted
+**Status:** Superseded by [ADR-004](004-drop-supabase-local-postgres.md) (database + auth portions)
 
 ## Context
 

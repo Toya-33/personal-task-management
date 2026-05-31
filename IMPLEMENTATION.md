@@ -16,5 +16,5 @@ I want a dashboard-like UI with:
 ## Techinical Specification
 
 **UI**: use next js framework to develop a modern and minimalistic user interface.
-**Backend**: should use supabase to store user data and user authentication.
-**Deployment**: should be deployed to vercel for production as it is easy to integrate with next js.
+**Backend**: a local PostgreSQL database accessed server-side via the `pg` driver (Server Actions + server components). No authentication — the app is single-user. (Originally Supabase; migrated to local Postgres — see ADR-004.)
+**Deployment**: containerized with Docker (`Dockerfile` + `docker-compose.yml`); the app connects to PostgreSQL running on the host.

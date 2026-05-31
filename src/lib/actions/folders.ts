@@ -1,48 +1,43 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 
 export async function createFolder(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
   const name = formData.get("name") as string;
   const color = (formData.get("color") as string) || "#6366f1";
 
-  const { data: maxOrder } = await supabase
-    .from("folders")
-    .select("sort_order")
-    .eq("user_id", user.id)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .single();
+  const rows = await query<{ max: number | null }>(
+    "select max(sort_order) as max from folders"
+  );
+  const sortOrder = (rows[0]?.max ?? -1) + 1;
 
-  await supabase.from("folders").insert({
-    user_id: user.id,
-    name,
-    color,
-    sort_order: (maxOrder?.sort_order ?? -1) + 1,
-  });
+  await query(
+    "insert into folders (name, color, sort_order) values ($1, $2, $3)",
+    [name, color, sortOrder]
+  );
 
   revalidatePath("/tasks");
 }
 
 export async function updateFolder(folderId: string, formData: FormData) {
-  const supabase = await createClient();
   const name = formData.get("name") as string;
   const color = formData.get("color") as string | null;
 
-  const update: Record<string, string> = { name };
-  if (color) update.color = color;
+  if (color) {
+    await query("update folders set name = $1, color = $2 where id = $3", [
+      name,
+      color,
+      folderId,
+    ]);
+  } else {
+    await query("update folders set name = $1 where id = $2", [name, folderId]);
+  }
 
-  await supabase.from("folders").update(update).eq("id", folderId);
   revalidatePath("/tasks");
 }
 
 export async function deleteFolder(folderId: string) {
-  const supabase = await createClient();
-  await supabase.from("folders").delete().eq("id", folderId);
+  await query("delete from folders where id = $1", [folderId]);
   revalidatePath("/tasks");
 }

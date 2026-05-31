@@ -1,6 +1,5 @@
 export interface Folder {
   id: string;
-  user_id: string;
   name: string;
   color: string;
   sort_order: number;
@@ -9,7 +8,6 @@ export interface Folder {
 
 export interface Task {
   id: string;
-  user_id: string;
   folder_id: string;
   title: string;
   description: string | null;
@@ -21,7 +19,6 @@ export interface Task {
 
 export interface Subtask {
   id: string;
-  user_id: string;
   task_id: string;
   title: string;
   status: "pending" | "in_progress" | "completed";
@@ -32,7 +29,6 @@ export interface Subtask {
 
 export interface TimeEntry {
   id: string;
-  user_id: string;
   subtask_id: string;
   started_at: string;
   ended_at: string | null;
