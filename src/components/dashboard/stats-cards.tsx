@@ -2,20 +2,23 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDuration } from "@/lib/utils/time";
-import { Clock, CheckCircle2, ListTodo, FolderOpen } from "lucide-react";
+import { Clock, CheckCircle2, ListChecks } from "lucide-react";
+
+interface TaskCount {
+  completed: number;
+  total: number;
+}
 
 interface StatsCardsProps {
   totalSeconds: number;
-  completedTasks: number;
-  totalTasks: number;
-  totalFolders: number;
+  mainTasks: TaskCount;
+  subTasks: TaskCount;
 }
 
 export function StatsCards({
   totalSeconds,
-  completedTasks,
-  totalTasks,
-  totalFolders,
+  mainTasks,
+  subTasks,
 }: StatsCardsProps) {
   const stats = [
     {
@@ -24,24 +27,19 @@ export function StatsCards({
       icon: Clock,
     },
     {
-      title: "Completed Tasks",
-      value: completedTasks.toString(),
+      title: "Main Tasks",
+      value: `${mainTasks.completed}/${mainTasks.total}`,
       icon: CheckCircle2,
     },
     {
-      title: "Total Tasks",
-      value: totalTasks.toString(),
-      icon: ListTodo,
-    },
-    {
-      title: "Folders",
-      value: totalFolders.toString(),
-      icon: FolderOpen,
+      title: "Sub-tasks",
+      value: `${subTasks.completed}/${subTasks.total}`,
+      icon: ListChecks,
     },
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {stats.map((stat) => (
         <Card key={stat.title}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">

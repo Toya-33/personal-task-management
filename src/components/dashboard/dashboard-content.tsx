@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import type { Task, Folder } from "@/types/database";
 import { StatsCards } from "./stats-cards";
 import { TimeByTaskChart } from "./time-by-task-chart";
 import { DailyTimeChart } from "./daily-time-chart";
-import { CompletedTasksChart } from "./completed-tasks-chart";
 import { PeriodSelector, type Period } from "./period-selector";
 import { DateRangePicker } from "./date-range-picker";
-import { TimeEntriesTable } from "./time-entries-table";
 
 export interface TimeEntryWithRelations {
   id: string;
@@ -30,10 +27,15 @@ export interface TimeEntryWithRelations {
   };
 }
 
+interface TaskCount {
+  completed: number;
+  total: number;
+}
+
 interface DashboardContentProps {
   timeEntries: TimeEntryWithRelations[];
-  tasks: Task[];
-  folders: Folder[];
+  mainTasks: TaskCount;
+  subTasks: TaskCount;
 }
 
 function getDateRangeForPeriod(period: Period): { from: Date; to: Date } {
@@ -60,8 +62,8 @@ function getDateRangeForPeriod(period: Period): { from: Date; to: Date } {
 
 export function DashboardContent({
   timeEntries,
-  tasks,
-  folders,
+  mainTasks,
+  subTasks,
 }: DashboardContentProps) {
   const [period, setPeriod] = useState<Period>("week");
   const [dateRange, setDateRange] = useState(() => getDateRangeForPeriod("week"));
@@ -88,9 +90,6 @@ export function DashboardContent({
     (sum, e) => sum + (e.duration_seconds ?? 0),
     0
   );
-
-  const completedTasks = tasks.filter((t) => t.status === "completed").length;
-  const pendingTasks = tasks.filter((t) => t.status !== "completed").length;
 
   // Time by task
   const timeByTask = useMemo(() => {
@@ -142,22 +141,14 @@ export function DashboardContent({
 
       <StatsCards
         totalSeconds={totalSeconds}
-        completedTasks={completedTasks}
-        totalTasks={tasks.length}
-        totalFolders={folders.length}
+        mainTasks={mainTasks}
+        subTasks={subTasks}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <TimeByTaskChart data={timeByTask} />
         <DailyTimeChart data={dailyTime} />
       </div>
-
-      <CompletedTasksChart
-        completed={completedTasks}
-        pending={pendingTasks}
-      />
-
-      <TimeEntriesTable entries={filteredEntries} />
     </div>
   );
 }

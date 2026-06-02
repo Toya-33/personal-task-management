@@ -3,10 +3,6 @@ import {
   DashboardContent,
   type TimeEntryWithRelations,
 } from "@/components/dashboard/dashboard-content";
-import type { Task, Folder } from "@/types/database";
-
-// Reads live data from Postgres on every request — never prerender at build time.
-export const dynamic = "force-dynamic";
 
 interface EntryRow {
   id: string;
@@ -22,8 +18,16 @@ interface EntryRow {
   folder_color: string;
 }
 
+interface Counts {
+  completed: number;
+  total: number;
+}
+
+// Reads live data from Postgres on every request — never prerender at build time.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
-  const [entryRows, tasks, folders] = await Promise.all([
+  const [entryRows, mainTaskCounts, subTaskCounts] = await Promise.all([
     query<EntryRow>(
       `select te.id, te.started_at, te.ended_at, te.duration_seconds,
               s.id as subtask_id, s.title as subtask_title,
@@ -35,8 +39,16 @@ export default async function DashboardPage() {
          join folders f on f.id = t.folder_id
         where te.ended_at is not null`
     ),
-    query<Task>("select * from tasks"),
-    query<Folder>("select * from folders"),
+    query<Counts>(
+      `select count(*) filter (where status = 'completed')::int as completed,
+              count(*)::int as total
+         from tasks`
+    ),
+    query<Counts>(
+      `select count(*) filter (where status = 'completed')::int as completed,
+              count(*)::int as total
+         from subtasks`
+    ),
   ]);
 
   const timeEntries: TimeEntryWithRelations[] = entryRows.map((r) => ({
@@ -69,8 +81,8 @@ export default async function DashboardPage() {
       </div>
       <DashboardContent
         timeEntries={timeEntries}
-        tasks={tasks}
-        folders={folders}
+        mainTasks={mainTaskCounts[0]}
+        subTasks={subTaskCounts[0]}
       />
     </div>
   );

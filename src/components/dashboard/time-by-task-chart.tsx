@@ -40,6 +40,9 @@ export function TimeByTaskChart({ data }: TimeByTaskChartProps) {
                 dataKey="name"
                 width={100}
                 tick={{ fontSize: 12 }}
+                tickFormatter={(value: string) =>
+                  value.length > 14 ? `${value.slice(0, 13)}…` : value
+                }
               />
               <Tooltip
                 formatter={(value) => [`${value}h`, "Time"]}
