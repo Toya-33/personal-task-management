@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Time Tracker V2
 
-## Getting Started
+A single-user time-tracking app — organize work into folders → tasks → subtasks, run a
+picture-in-picture timer, and review time on a dashboard. Built with Next.js 16 (App Router),
+React 19, TypeScript, Tailwind CSS v4, and a local PostgreSQL database via the `pg` driver.
+No authentication — it's a single-user app.
 
-First, run the development server:
+## Local development
+
+Requires Node.js and a local PostgreSQL (13+).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Create the database and apply the schema
+createdb time_tracker
+psql -d time_tracker -f schema.sql
+
+# 2. Configure the connection
+cp .env.example .env.local        # then edit DATABASE_URL for your machine
+
+# 3. Install and run
+npm install
+npm run dev                       # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`schema.sql` is the source of truth for the database. See [CLAUDE.md](CLAUDE.md) for the
+architecture and conventions.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Run with Docker
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app connects to a PostgreSQL running on the **host**. Create `.env.docker` (gitignored)
+from your `.env.local`, swapping the host so the container can reach it:
 
-## Learn More
+```bash
+sed 's/@localhost:/@host.docker.internal:/' .env.local > .env.docker
+docker compose up -d --build      # http://localhost:3001
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy to a VM (24/7, nginx + HTTPS)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See the step-by-step runbook: **[docs/deployment.md](docs/deployment.md)** — Docker + host
+PostgreSQL, an nginx reverse-proxy site, and a Let's Encrypt certificate via certbot.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+- `npm run dev` — dev server (Turbopack)
+- `npm run build` — production build
+- `npm run start` — start the production build
+- `npm run lint` — ESLint
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Architecture decisions
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [docs/decisions/](docs/decisions/) (ADRs), notably
+[ADR-004](docs/decisions/004-drop-supabase-local-postgres.md) on moving from Supabase to local
+PostgreSQL.

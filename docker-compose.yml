@@ -6,7 +6,9 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - 3001:3000
+      # Bind to localhost only — the app is reached through nginx (or http://localhost:3001
+      # on your dev machine), never directly from the public internet.
+      - "127.0.0.1:3001:3000"
     # DATABASE_URL is read from .env.docker (gitignored) — it's your .env.local with the
     # host swapped from localhost to host.docker.internal so the container reaches the
     # PostgreSQL running on your host. The host Postgres must accept connections from the
