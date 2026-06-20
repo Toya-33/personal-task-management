@@ -53,3 +53,17 @@ export async function deleteTask(taskId: string) {
   await query("delete from tasks where id = $1", [taskId]);
   revalidatePath("/tasks");
 }
+
+// Persist a new task order within a folder. `orderedIds` is the full list of the
+// folder's task ids in their new order; each row's sort_order becomes its index.
+export async function reorderTasks(orderedIds: string[]) {
+  if (orderedIds.length === 0) return;
+  await query(
+    `update tasks as t
+        set sort_order = v.ord
+       from unnest($1::uuid[], $2::int[]) as v(id, ord)
+      where t.id = v.id`,
+    [orderedIds, orderedIds.map((_, i) => i)]
+  );
+  revalidatePath("/tasks");
+}

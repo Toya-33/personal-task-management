@@ -41,3 +41,17 @@ export async function deleteFolder(folderId: string) {
   await query("delete from folders where id = $1", [folderId]);
   revalidatePath("/tasks");
 }
+
+// Persist a new folder order. `orderedIds` is the full list of folder ids in
+// their new order; each row's sort_order becomes its index.
+export async function reorderFolders(orderedIds: string[]) {
+  if (orderedIds.length === 0) return;
+  await query(
+    `update folders as f
+        set sort_order = v.ord
+       from unnest($1::uuid[], $2::int[]) as v(id, ord)
+      where f.id = v.id`,
+    [orderedIds, orderedIds.map((_, i) => i)]
+  );
+  revalidatePath("/tasks");
+}

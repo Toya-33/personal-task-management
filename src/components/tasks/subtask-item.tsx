@@ -20,12 +20,15 @@ import {
   Circle,
   Pencil,
   Clock,
+  GripVertical,
 } from "lucide-react";
 import { useState } from "react";
 import { Input } from "../ui/input";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { EditTimeDialog } from "./edit-time-dialog";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface SubtaskItemProps {
   subtask: SubtaskWithTime;
@@ -47,6 +50,21 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
     subtask.status === "completed",
   );
   const [editTimeOpen, setEditTimeOpen] = useState(false);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: subtask.id });
+  const sortableStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    zIndex: isDragging ? 10 : undefined,
+  };
 
   // Hide the deleted sub-task instantly
   if (isDeleted) return null;
@@ -140,10 +158,22 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
 
   return (
     <div
+      ref={setNodeRef}
+      style={sortableStyle}
       className={`group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50 ${
         isActive ? "bg-primary/5" : ""
       } ${isPending ? "opacity-50" : ""}`}
     >
+      <button
+        type="button"
+        className="flex h-5 w-5 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground/40 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100 active:cursor-grabbing"
+        aria-label="Drag to reorder subtask"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+
       {isEditing ? (
         <Input
           className="h-6 text-sm"

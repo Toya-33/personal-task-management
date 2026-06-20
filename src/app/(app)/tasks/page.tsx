@@ -15,9 +15,9 @@ export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
   const [folders, tasks, subtasks, timeEntries] = await Promise.all([
-    query<Folder>("select * from folders order by sort_order"),
-    query<Task>("select * from tasks order by updated_at desc"),
-    query<Subtask>("select * from subtasks order by updated_at desc"),
+    query<Folder>("select * from folders order by sort_order, created_at"),
+    query<Task>("select * from tasks order by sort_order, created_at"),
+    query<Subtask>("select * from subtasks order by sort_order, created_at"),
     query<TimeEntry>("select * from time_entries"),
   ]);
 

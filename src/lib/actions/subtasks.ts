@@ -51,3 +51,17 @@ export async function deleteSubtask(subtaskId: string) {
   await query("delete from subtasks where id = $1", [subtaskId]);
   revalidatePath("/tasks");
 }
+
+// Persist a new subtask order within a task. `orderedIds` is the full list of the
+// task's subtask ids in their new order; each row's sort_order becomes its index.
+export async function reorderSubtasks(orderedIds: string[]) {
+  if (orderedIds.length === 0) return;
+  await query(
+    `update subtasks as s
+        set sort_order = v.ord
+       from unnest($1::uuid[], $2::int[]) as v(id, ord)
+      where s.id = v.id`,
+    [orderedIds, orderedIds.map((_, i) => i)]
+  );
+  revalidatePath("/tasks");
+}

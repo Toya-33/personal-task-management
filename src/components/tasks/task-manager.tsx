@@ -1,44 +1,99 @@
 "use client";
 
-import { useState } from "react";
-import type { FolderWithTasks } from "@/types/database";
+import { useState, useTransition } from "react";
+import type { FolderWithTasks, TaskWithSubtasks } from "@/types/database";
 import { FolderList } from "./folder-list";
 import { TaskCard } from "./task-card";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { CreateTaskDialog } from "./create-task-dialog";
 import { Button } from "@/components/ui/button";
 import { Plus, FolderOpen } from "lucide-react";
+import { reorderTasks } from "@/lib/actions/tasks";
+import { mergeVisibleOrder } from "@/lib/utils/reorder";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
 export function TaskManager({ folders }: { folders: FolderWithTasks[] }) {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(
     folders[0]?.id ?? null
   );
   const [viewFilter, setViewFilter] = useState<"pending" | "completed">("pending");
+  const [, startTransition] = useTransition();
 
   const selectedFolder = folders.find((f) => f.id === selectedFolderId);
 
+  // Local copy of the selected folder's tasks so a drag reorders instantly.
+  // Reset to the server order when the folder changes or fresh data arrives —
+  // adjusted during render (React's recommended alternative to a sync effect).
+  const [orderedTasks, setOrderedTasks] = useState<TaskWithSubtasks[]>(
+    () => selectedFolder?.tasks ?? []
+  );
+  const [syncedFrom, setSyncedFrom] = useState({ folders, selectedFolderId });
+  if (
+    syncedFrom.folders !== folders ||
+    syncedFrom.selectedFolderId !== selectedFolderId
+  ) {
+    setSyncedFrom({ folders, selectedFolderId });
+    setOrderedTasks(selectedFolder?.tasks ?? []);
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   // Compute filtered tasks based on view filter
-  const filteredTasks = selectedFolder
-    ? viewFilter === "pending"
-      ? selectedFolder.tasks.filter((t) => t.status !== "completed")
-      : selectedFolder.tasks.filter(
+  const filteredTasks =
+    viewFilter === "pending"
+      ? orderedTasks.filter((t) => t.status !== "completed")
+      : orderedTasks.filter(
           (t) =>
             t.status === "completed" ||
             t.subtasks.some((s) => s.status === "completed")
-        )
-    : [];
+        );
 
   // Compute counts for tabs
-  const pendingCount = selectedFolder
-    ? selectedFolder.tasks.filter((t) => t.status !== "completed").length
-    : 0;
-  const completedCount = selectedFolder
-    ? selectedFolder.tasks.filter(
-        (t) =>
-          t.status === "completed" ||
-          t.subtasks.some((s) => s.status === "completed")
-      ).length
-    : 0;
+  const pendingCount = orderedTasks.filter(
+    (t) => t.status !== "completed"
+  ).length;
+  const completedCount = orderedTasks.filter(
+    (t) =>
+      t.status === "completed" ||
+      t.subtasks.some((s) => s.status === "completed")
+  ).length;
+
+  function handleTaskDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const visibleIds = filteredTasks.map((t) => t.id);
+    const oldIndex = visibleIds.indexOf(active.id as string);
+    const newIndex = visibleIds.indexOf(over.id as string);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const newVisibleIds = arrayMove(visibleIds, oldIndex, newIndex);
+    const next = mergeVisibleOrder(orderedTasks, newVisibleIds);
+    setOrderedTasks(next);
+    startTransition(() => {
+      reorderTasks(next.map((t) => t.id));
+    });
+  }
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -115,11 +170,28 @@ export function TaskManager({ folders }: { folders: FolderWithTasks[] }) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} viewFilter={viewFilter} />
-                ))}
-              </div>
+              <DndContext
+                id="dnd-tasks"
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={[restrictToVerticalAxis]}
+                onDragEnd={handleTaskDragEnd}
+              >
+                <SortableContext
+                  items={filteredTasks.map((t) => t.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {filteredTasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        viewFilter={viewFilter}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </>
         ) : (
