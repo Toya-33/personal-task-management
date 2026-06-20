@@ -65,6 +65,14 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     recover();
   }, []);
 
+  // Stop timer in DB when the tab/browser closes
+  useEffect(() => {
+    if (!state.isRunning) return;
+    const handleBeforeUnload = () => navigator.sendBeacon("/api/stop-timer");
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [state.isRunning]);
+
   // Tick interval
   useEffect(() => {
     if (state.isRunning && state.activeTimeEntry) {

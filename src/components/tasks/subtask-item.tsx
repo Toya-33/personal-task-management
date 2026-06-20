@@ -19,12 +19,13 @@ import {
   Trash2,
   Circle,
   Pencil,
-  Flag,
+  Clock,
 } from "lucide-react";
 import { useState } from "react";
 import { Input } from "../ui/input";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { EditTimeDialog } from "./edit-time-dialog";
 
 interface SubtaskItemProps {
   subtask: SubtaskWithTime;
@@ -45,6 +46,7 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
   const [isCompleted, setIsCompleted] = useState(
     subtask.status === "completed",
   );
+  const [editTimeOpen, setEditTimeOpen] = useState(false);
 
   // Hide the deleted sub-task instantly
   if (isDeleted) return null;
@@ -229,6 +231,10 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
                 <Pencil className="mr-2 h-3.5 w-3.5" />
                 Rename
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEditTimeOpen(true)}>
+                <Clock className="mr-2 h-3.5 w-3.5" />
+                Edit time
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
                 onClick={handleDelete}
@@ -240,6 +246,14 @@ export function SubtaskItem({ subtask, taskTitle }: SubtaskItemProps) {
           </DropdownMenu>
         </>
       )}
+
+      <EditTimeDialog
+        subtaskId={subtask.id}
+        subtaskTitle={subtask.title}
+        open={editTimeOpen}
+        onOpenChange={setEditTimeOpen}
+        onSaved={() => router.refresh()}
+      />
     </div>
   );
 }

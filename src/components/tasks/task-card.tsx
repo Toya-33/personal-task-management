@@ -29,6 +29,7 @@ import {
   Trash2,
   CheckCircle2,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -106,8 +107,10 @@ export function TaskCard({
     });
   }
 
-  async function handleMarkComplete() {
-    await updateTask(task.id, { status: "completed" });
+  async function handleToggleStatus() {
+    const newStatus = taskStatus === "completed" ? "pending" : "completed";
+    setTaskStatus(newStatus);
+    await updateTask(task.id, { status: newStatus });
   }
 
   async function handleRenameTask() {
@@ -158,16 +161,16 @@ export function TaskCard({
                   />
                 ) : (
                   <span
-                    className={`font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}
+                    className={`font-medium ${taskStatus === "completed" ? "line-through text-muted-foreground" : ""}`}
                   >
                     {task.title}
                   </span>
                 )}
                 <Badge
                   variant="secondary"
-                  className={`text-xs ${statusColors[task.status]}`}
+                  className={`text-xs ${statusColors[taskStatus]}`}
                 >
-                  {task.status.replace("_", " ")}
+                  {taskStatus.replace("_", " ")}
                 </Badge>
               </div>
               {task.description && (
@@ -195,12 +198,19 @@ export function TaskCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {task.status !== "completed" && (
-                  <DropdownMenuItem onClick={handleMarkComplete}>
-                    <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-                    Mark complete
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem onClick={handleToggleStatus}>
+                  {taskStatus === "completed" ? (
+                    <>
+                      <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                      Reopen task
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                      Mark complete
+                    </>
+                  )}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();

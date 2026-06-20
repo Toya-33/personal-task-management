@@ -97,6 +97,42 @@ export async function stopTimer(entryId: string): Promise<void> {
   revalidatePath("/dashboard");
 }
 
+/** Fetch all completed time entries for a subtask, newest first. */
+export async function getTimeEntriesForSubtask(
+  subtaskId: string
+): Promise<TimeEntry[]> {
+  return query<TimeEntry>(
+    `select id, subtask_id, started_at, ended_at, duration_seconds, created_at
+       from time_entries
+      where subtask_id = $1 and ended_at is not null
+      order by started_at desc`,
+    [subtaskId]
+  );
+}
+
+/** Update a completed entry's duration and recalculate ended_at. */
+export async function updateTimeEntry(
+  entryId: string,
+  durationSeconds: number
+): Promise<void> {
+  await query(
+    `update time_entries
+        set duration_seconds = $1,
+            ended_at = started_at + ($1::int * interval '1 second')
+      where id = $2 and ended_at is not null`,
+    [durationSeconds, entryId]
+  );
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+}
+
+/** Delete a single time entry. */
+export async function deleteTimeEntry(entryId: string): Promise<void> {
+  await query("delete from time_entries where id = $1", [entryId]);
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+}
+
 /** Stop a running entry and mark its subtask completed. */
 export async function completeTimer(
   entryId: string,
